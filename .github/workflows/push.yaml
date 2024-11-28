@@ -13,7 +13,7 @@ jobs:
     name: deploy terraform 
     runs-on: ubuntu-latest
 
-    jobs:
+    steps:
       - name: pre checkout@v4
         uses: actions/checkout@v4
       
