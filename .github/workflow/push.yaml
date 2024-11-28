@@ -1,0 +1,40 @@
+name: "Terraform push"
+
+on:
+  push:
+    branches: 
+      - main
+
+env:
+  AWS_REGION: 'us-west-2'
+
+jobs:
+  deploy-terraform:
+    name: deploy terraform 
+    runs-on: ubuntu-latest
+
+    jobs:
+      - name: pre checkout@v4
+        uses: actions/checkout@v4
+      
+      - name: setup terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          version: "1.10.0"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve tfplan
