@@ -1,9 +1,35 @@
-resource "aws_s3_bucket" "test" {
-  bucket = "spylyp-test-tf"
+module "eks_cluster_role" {
+  source = "./modules/iam_role"
 
-  tags = {
-    Name        = "My bucket"
-    Environment = "Dev"
-  }
+  role_name = "spylyp-node-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Effect    = "Allow"
+        Sid       = ""
+      },
+    ]
+  })
+
+  policy_attachments = [
+    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  ]
+}
+
+module "eks_node_group" {
+  source = "./modules/eks-node-group"
+
+  cluster_name = "spylyp"
+  node_group_name = "self-managed-1"
+  node_role_arn = module.eks_cluster_role.role_arn
+  subnet_ids = [ "subnet-fffb1087", "subnet-faaabfb1", "subnet-9808f2c5", "subnet-42cfbd69" ]
+  instance_types = [ "t3.micro" ]
 }
 

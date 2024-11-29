@@ -5,4 +5,10 @@ terraform {
     region         = "us-west-2"                      # Your AWS region
     encrypt        = true                             # Enable encryption for the state file
   }
+  required_providers {
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 5.72.1"
+    }
+  }
 }
