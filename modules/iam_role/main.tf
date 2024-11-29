@@ -9,7 +9,7 @@ resource "aws_iam_role_policy_attachment" "this" {
   count = length(var.policy_attachments)
 
   role = aws_iam_role.this.name
-  policy_arn = count.index
+  policy_arn = var.policy_attachments[count.index]
 }
 
 # # Attach necessary policies to the role
