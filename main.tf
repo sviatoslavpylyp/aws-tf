@@ -23,13 +23,31 @@
 #   ]
 # }
 
-module "eks_node_group" {
-  source = "./modules/eks-node-group"
+# module "eks_node_group" {
+#   source = "./modules/eks-node-group"
 
-  cluster_name = "spylyp"
-  node_group_name = "self-managed-1"
-  node_role_arn = "arn:aws:iam::245582572290:role/spylyp-self-managed-nodegroup-2"
-  subnet_ids = [ "subnet-fffb1087", "subnet-faaabfb1", "subnet-9808f2c5", "subnet-42cfbd69" ]
-  instance_types = [ "t3.micro" ]
+#   cluster_name = "spylyp"
+#   node_group_name = "self-managed-1"
+#   node_role_arn = "arn:aws:iam::245582572290:role/spylyp-self-managed-nodegroup-2"
+#   subnet_ids = [ "subnet-fffb1087", "subnet-faaabfb1", "subnet-9808f2c5", "subnet-42cfbd69" ]
+#   instance_types = [ "t3.micro" ]
+# }
+
+resource "helm_release" "argocd" {
+  name = "argocd"
+  repository = "https://argoproj.github.io/argo-helm"
+  chart = "argocd"
+  version = "2.13.1"
+
+  namespace = "argocd"
+
+  set {
+    name  = "server.service.type"
+    value = "LoadBalancer"
+  }
+
+  set {
+    name  = "server.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type"
+    value = "nlb"
+  }
 }
-
