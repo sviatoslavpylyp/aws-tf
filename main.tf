@@ -10,4 +10,3 @@ module "eks" {
   cluster_iam_role_name = "eks-cluster-role-tf"
   node_iam_role_name = "eks-node-role-tf"
 }
-
