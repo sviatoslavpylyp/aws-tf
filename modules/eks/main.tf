@@ -16,12 +16,12 @@ module "eks_bottlerocket" {
   # cluster iam
   create_iam_role = true
   iam_role_name = var.cluster_iam_role_name
-  iam_role_use_name_prefix = var.prefix
+  iam_role_use_name_prefix = true
 
   # node iam
   create_node_iam_role = true
   node_iam_role_name = var.node_iam_role_name
-  node_iam_role_use_name_prefix = var.prefix
+  node_iam_role_use_name_prefix = true
 
 
   # EKS Addons
