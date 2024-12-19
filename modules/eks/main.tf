@@ -41,23 +41,18 @@ module "eks_bottlerocket" {
   eks_managed_node_groups = {
     self_managed = {
       ami_type      = "BOTTLEROCKET_x86_64"
-      instance_type = "t3.micro"
+      instance_types = [ "t3.micro" ]
       capacity_type = "ON_DEMAND"
       create_launch_template = true
 
       min_size = 2
       max_size = 2
       desired_size = 2
-    }
-    labels = {
+
+      labels = {
         type = "nodegroup"
+      }
     }
-  }
-  
-  # storage
-  eks_managed_node_group_defaults = {
-    ami_type  = "AL2_x86_64"
-    disk_size = 10
   }
 
   # sg
