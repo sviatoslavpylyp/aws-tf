@@ -40,3 +40,4 @@ terraform.rc
 ssh-key
 ssh-key.pub
 .terraform.lock.hcl
+kube-prom-stack-values.yaml

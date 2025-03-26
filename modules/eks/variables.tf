@@ -2,10 +2,6 @@ variable "cluster_name" {
   type = string
 }
 
-variable "prefix" {
-  type = string
-}
-
 variable "cluster_version" {
   type = string
 }

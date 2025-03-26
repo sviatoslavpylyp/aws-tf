@@ -1,0 +1,176 @@
+## Using default values from https://github.com/grafana/helm-charts/blob/main/charts/grafana/values.yaml
+grafana:
+  enabled: ${grafana_enabled}
+  namespaceOverride: ""
+
+  ## ForceDeployDatasources Create datasource configmap even if grafana deployment has been disabled
+  forceDeployDatasources: false
+
+  ## ForceDeployDashboard Create dashboard configmap even if grafana deployment has been disabled
+  forceDeployDashboards: false
+
+  ## Deploy default dashboards
+  defaultDashboardsEnabled: true
+
+  ## Timezone for the default dashboards
+  ## Other options are: browser or a specific timezone, i.e. Europe/Luxembourg
+  defaultDashboardsTimezone: utc
+
+  ## Editable flag for the default dashboards
+  defaultDashboardsEditable: true
+
+  adminPassword: "${grafana_admin_password}"
+
+  ingress:
+    ## If true, Grafana Ingress will be created
+    enabled: ${grafana_ingress_enabled}
+    ingressClassName: nginx
+    annotations: 
+      alb.ingress.kubernetes.io/group.name: "grafana"
+      alb.ingress.kubernetes.io/healthcheck-path: "/"
+      alb.ingress.kubernetes.io/healthcheck-protocol: "HTTP"
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+      alb.ingress.kubernetes.io/target-type: "ip"
+      alb.ingress.kubernetes.io/scheme: "internet-facing"
+      cert-manager.io/cluster-issuer: http-01-production
+
+    labels: {}
+
+    ## Must be provided if Ingress is enable.
+    hosts: 
+      - "${grafana_host}"
+
+    ## Path for grafana ingress
+    path: /
+
+    tls:
+    - hosts:
+      - "${grafana_host}"
+      secretName: "${grafana_host}"
+
+  # # To make Grafana persistent (Using Statefulset)
+  # #
+  # persistence:
+  #   enabled: true
+  #   type: sts
+  #   storageClassName: "storageClassName"
+  #   accessModes:
+  #     - ReadWriteOnce
+  #   size: 20Gi
+  #   finalizers:
+  #     - kubernetes.io/pvc-protection
+
+  serviceAccount:
+    create: true
+    autoMount: true
+
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      # Allow discovery in all namespaces for dashboards
+      searchNamespace: ALL
+
+      # Support for new table panels, when enabled grafana auto migrates the old table panels to newer table panels
+      enableNewTablePanelSyntax: false
+
+      ## Annotations for Grafana dashboard configmaps
+      annotations: {}
+      multicluster:
+        global:
+          enabled: false
+        etcd:
+          enabled: false
+      provider:
+        allowUiUpdates: false
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: true
+      isDefaultDatasource: true
+
+      name: Prometheus
+      uid: prometheus
+
+      ## URL of prometheus datasource
+      # url: http://prometheus-stack-prometheus:9090/
+
+      ## Prometheus request timeout in seconds
+      # timeout: 30
+
+      # If not defined, will use prometheus.prometheusSpec.scrapeInterval or its default
+      # defaultDatasourceScrapeInterval: 15s
+
+      ## Annotations for Grafana datasource configmaps
+      annotations: {}
+
+      ## Set method for HTTP to send query to datasource
+      httpMethod: POST
+
+      ## Create datasource for each Pod of Prometheus StatefulSet;
+      ## this uses headless service `prometheus-operated` which is
+      ## created by Prometheus Operator
+      ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/0fee93e12dc7c2ea1218f19ae25ec6b893460590/pkg/prometheus/statefulset.go#L255-L286
+      createPrometheusReplicasDatasources: false
+      label: grafana_datasource
+      labelValue: "1"
+
+      ## Field with internal link pointing to existing data source in Grafana.
+      ## Can be provisioned via additionalDataSources
+      exemplarTraceIdDestinations: {}
+        # datasourceUid: Jaeger
+        # traceIdLabelName: trace_id
+      alertmanager:
+        enabled: true
+        name: Alertmanager
+        uid: alertmanager
+        handleGrafanaManagedAlerts: false
+        implementation: prometheus
+
+  extraConfigmapMounts: []
+
+  deleteDatasources: []
+
+  ## Configure additional grafana datasources (passed through tpl)
+  ## ref: http://docs.grafana.org/administration/provisioning/#datasources
+  additionalDataSources: 
+  - name: Loki
+    uid: loki
+    type: loki
+    url: http://loki:3100/
+    access: proxy
+    isDefault: false
+
+  # Flag to mark provisioned data sources for deletion if they are no longer configured.
+  # It takes no effect if data sources are already listed in the deleteDatasources section.
+  prune: false
+
+  ## Passed to grafana subchart and used by servicemonitor below
+  service:
+    portName: http-web
+    ipFamilies: []
+    ipFamilyPolicy: ""
+
+  serviceMonitor:
+    # If true, a ServiceMonitor CRD is created for a prometheus operator
+    # https://github.com/coreos/prometheus-operator
+    enabled: true
+
+    # Path to use for scraping metrics. Might be different if server.root_url is set
+    # in grafana.ini
+    path: "/metrics"
+
+    #  namespace: monitoring  (defaults to use the namespace this chart is deployed to)
+
+    # labels for the ServiceMonitor
+    labels: {}
+
+    # Scrape interval. If not set, the Prometheus default scrape interval is used.
+    interval: ""
+    scheme: http
+    tlsConfig: {}
+    scrapeTimeout: 30s
+
+    ## RelabelConfigs to apply to samples before scraping
+    ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#relabelconfig
+    relabelings: []

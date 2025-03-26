@@ -1,12 +1,8 @@
 locals {
-  vpc_id = "vpc-2948d651"
-  subnet_ids = [
-    "subnet-42cfbd69",
-    "subnet-9808f2c5",
-    "subnet-fffb1087",
-    "subnet-faaabfb1"
-  ]
+  vpc_id = data.terraform_remote_state.state.outputs.vpc_id
+  private_subnet_ids = data.terraform_remote_state.state.outputs.private_subnet_ids
 
+  cluster_name = ""
 
-  
+  hostname = ""
 }

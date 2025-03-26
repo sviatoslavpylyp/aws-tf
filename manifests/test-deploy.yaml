@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deploy
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      serviceAccountName: rds-access-sa
+      containers:
+      - name: temp
+        image: 245582572290.dkr.ecr.us-west-2.amazonaws.com/spylyp/py-app:9cd512240f5390037a9a62729da7541a6126c34a
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        env:
+        - name: PROD
+          valueFrom:
+            configMapKeyRef:
+              name: rds-connect-creds
+              key: PROD
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: rds-connect-creds
+              key: DB_HOST
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: rds-connect-creds
+              key: DB_NAME
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: rds-connect-creds
+              key: DB_PORT
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: rds-connect-creds
+              key: DB_USER
+        ports:
+        - containerPort: 5000
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 5000
+          initialDelaySeconds: 1
+          periodSeconds: 2
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 5000
+          initialDelaySeconds: 1
+          periodSeconds: 2

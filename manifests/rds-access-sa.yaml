@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: 
+  name: rds-access-sa
+  namespace: default
+  annotations:
+    eks.amazonaws.com/role-arn: sld

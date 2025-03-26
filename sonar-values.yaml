@@ -1,0 +1,248 @@
+deploymentType: "StatefulSet"
+
+replicaCount: 1
+
+# How many revisions to retain (Deployment ReplicaSets or StatefulSets)
+revisionHistoryLimit: 10
+
+deploymentStrategy:
+  type: Recreate
+
+edition: "community"
+
+community:
+  enabled: true
+  buildNumber: "24.12.0.100206"
+
+image:
+  repository: sonarqube
+  pullPolicy: IfNotPresent
+
+securityContext:
+  fsGroup: 0
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 0
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop: ["ALL"]
+#   readOnlyRootFilesystem: true
+
+
+service:
+  type: ClusterIP
+  externalPort: 9000
+  internalPort: 9000
+  labels:
+  annotations: {}
+
+httpProxySecret: ""
+httpProxy: ""
+httpsProxy: ""
+noProxy: ""
+
+sonarWebContext: ""
+
+httproute:
+  enabled: false
+  # gateway: my-gateway
+  # gatewayNamespace: my-gateway-namespace # optional
+  # labels:
+  #   somelabel: somevalue
+  # hostnames:
+  #   - sonarqube.your-org.com
+  # The rules are optional, by default we will create one with the SonarWebContext prefix and the SonarQube service values
+  # rules:
+  # - matches:
+  #   - path:
+  #       type: PathPrefix
+  #       value: /bar
+  #   backendRefs:
+  #   - name: my-service1
+  #     port: 8080
+
+ingress:
+  enabled: false
+  # Used to create an Ingress record.
+  hosts:
+    - name: sonarqube.your-org.com
+      # Different clouds or configurations might need /* as the default path
+      # path: /
+      # For additional control over serviceName and servicePort
+      # serviceName: someService
+      # servicePort: somePort
+      # the pathType can be one of the following values: Exact|Prefix|ImplementationSpecific(default)
+      # pathType: ImplementationSpecific
+  annotations: {}
+  # kubernetes.io/tls-acme: "true"
+
+  # Set the ingressClassName on the ingress record
+  # ingressClassName: nginx
+
+  tls: []
+  # Secrets must be manually created in the namespace. To generate a self-signed certificate (and private key) and then create the secret in the cluster please refer to official documentation available at https://kubernetes.github.io/ingress-nginx/user-guide/tls/#tls-secrets
+  # - secretName: chart-example-tls
+  #   hosts:
+  #     - chart-example.local
+
+readinessProbe:
+  exec:
+    command:
+    - sh
+    - -c
+    - |
+      #!/bin/bash
+      # A Sonarqube container is considered ready if the status is UP, DB_MIGRATION_NEEDED or DB_MIGRATION_RUNNING
+      # status about migration are added to prevent the node to be kill while SonarQube is upgrading the database.
+      if wget --no-proxy -qO- http://localhost:{{ .Values.service.internalPort }}{{ .Values.readinessProbe.sonarWebContext | default (include "sonarqube.webcontext" .) }}api/system/status | grep -q -e '"status":"UP"' -e '"status":"DB_MIGRATION_NEEDED"' -e '"status":"DB_MIGRATION_RUNNING"'; then
+        exit 0
+      fi
+      exit 1
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 6
+  timeoutSeconds: 1
+
+livenessProbe:
+  exec:
+    command:
+    - sh
+    - -c
+    - |
+      wget --no-proxy --quiet -O /dev/null --timeout={{ .Values.livenessProbe.timeoutSeconds }} --header="X-Sonar-Passcode: $SONAR_WEB_SYSTEMPASSCODE" "http://localhost:{{ .Values.service.internalPort }}{{ .Values.livenessProbe.sonarWebContext | default (include "sonarqube.webcontext" .) }}api/system/liveness"
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 6
+  timeoutSeconds: 1
+
+startupProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 24
+  timeoutSeconds: 1
+
+initContainers:
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 0
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+    readOnlyRootFilesystem: true
+  # We allow the init containers to have a separate resources declaration because
+  # the initContainer does not take as much resources.
+  resources: {}
+
+# Extra init containers to e.g. download required artifacts
+extraInitContainers: {}
+
+extraContainers: []
+extraVolumes: []
+extraVolumeMounts: []
+
+initSysctl:
+  enabled: true
+  vmMaxMapCount: 524288
+  fsFileMax: 131072
+  nofile: 131072
+  nproc: 8192
+  # all initContainers use SonarQube image by default, but you can override it by setting the image field (ex image: ubuntu:24.04)
+  # image:
+  securityContext:
+    # Compatible with podSecurity standard privileged
+    privileged: true
+    # if run without root permissions, error "sysctl: permission denied on key xxx, ignoring"
+    runAsUser: 0
+    readOnlyRootFilesystem: true
+  # resources: {}
+
+# List of plugins to install.
+# For example:
+# plugins:
+#  install:
+#    - "https://github.com/AmadeusITGroup/sonar-stash/releases/download/1.3.0/sonar-stash-plugin-1.3.0.jar"
+#    - "https://github.com/SonarSource/sonar-ldap/releases/download/2.2-RC3/sonar-ldap-plugin-2.2.0.601.jar"
+#
+plugins:
+  install: []
+
+  noCheckCertificate: false
+
+
+## a monitoring passcode needs to be defined in order to get reasonable probe results
+# not setting the monitoring passcode will result in a deployment that will never be ready
+monitoringPasscode: "define_it"
+
+## Environment variables to attach to the pods
+##
+# env:
+#   # If you use a different ingress path from /, you have to add it here as the value of SONAR_WEB_CONTEXT
+#   - name: SONAR_WEB_CONTEXT
+#     value: /sonarqube
+#   - name: VARIABLE
+#     value: my-value
+
+# Set annotations for pods
+annotations: {}
+
+resources:
+  limits:
+    cpu: 800m
+    memory: 6144M
+    ephemeral-storage: 512000M
+  requests:
+    cpu: 400m
+    memory: 2048M
+    ephemeral-storage: 1536M
+
+persistence:
+  enabled: false
+  ## Set annotations on pvc
+  annotations: {}
+
+  ## Specify an existing volume claim instead of creating a new one.
+  ## When using this option all following options like storageClass, accessMode and size are ignored.
+  # existingClaim:
+
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  storageClass:
+  accessMode: ReadWriteOnce
+  size: 5Gi
+  uid: 1000
+  guid: 0
+
+  ## DEPRECATED please use root level extraVolumes value
+  ## Specify extra volumes. Refer to ".spec.volumes" specification : https://kubernetes.io/fr/docs/concepts/storage/volumes/
+  volumes: []
+  ## DEPRECATED please use root level extraVolumeMounts value
+  ## Specify extra mounts. Refer to ".spec.containers.volumeMounts" specification : https://kubernetes.io/fr/docs/concepts/storage/volumes/
+  mounts: []
+
+# In case you want to specify different resources for emptyDir than {}
+emptyDir: {}
+  # Example of resouces that might be used:
+  # medium: Memory
+  # sizeLimit: 16Mi
+
+
+podLabels: {}
+
+sonarqubeFolder: /opt/sonarqube
+
+extraConfig:
+  secrets: []
+  configmaps: []
+
+terminationGracePeriodSeconds: 60
